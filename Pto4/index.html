@@ -1,0 +1,181 @@
+<!doctype html>
+<html>
+    <head>
+      <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+        <title>IracFLIX</title>
+        <style>
+            video {
+                width: 640px;
+                height: 360px;
+                border:black 5px double;
+            }
+            #hello{
+              height: 60px;
+              text-align: center;
+            }
+            #flix{
+              margin-top: 10px;
+            }
+            h1{
+              margin-left: 30px;
+            }
+            #stats{
+              margin-top:  100px;
+            }
+            .inside{
+              margin-left: 10px;
+              margin-top: 5px;
+            }
+        </style>
+    </head>
+    <body style="background-color: white">
+
+      <div style="background-color: black">
+        <h1 id="hello" style="color: red"><span id="flix" style="font-weight: bold">IRACFLIX</span></h2>
+      </div>
+
+      <div class="container">
+        <div class="row">
+          <div class="col-8" class="rounded">
+            <video class="dashjs-player"  autoplay controls preload="auto" muted>
+            </video>
+          </div>
+          <div id="stats" class="col-4" >
+            <h2>Welcome Group 06</h2>
+            <div class="container" id="stats2" style="border:black 5px double">
+              <div class="row">
+              <p class="inside"><span style="font-weight: bold">Title: </span>Harto de estar harto - Antilopez</p>
+              </div>
+                <div class="row">
+                <p class="inside"><span style="font-weight: bold">Video Bitrate: </span><span id="bitrate"></span> kbps</p>
+                </div>
+                <div class="row">
+                <p class="inside"><span style="font-weight: bold">Video Buffer: </span><span id="buffer"></span> seconds</p>
+                </div>
+                <div class="row">
+                <p class="inside"><span style="font-weight: bold">Video Representation: </span><span id="representation"></span></p>
+                </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="infoChart">
+        <h1 style="text-align:center">Statistics</h1>
+        <div class="code">
+          <canvas id="myChart" width="200px" height="50px"></canvas>
+        </div>
+      </div>
+
+
+        <script src="http://cdn.dashjs.org/latest/dash.all.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.27.0/moment.min.js" integrity="sha512-rmZcZsyhe0/MAjquhTgiUcb4d9knaFc7b5xAfju483gbEXTkeJRUMIPk6s3ySZMYUHEcjKbjLjyddGWMrNEvZg==" crossorigin="anonymous"></script>
+
+        <script>
+          var player;
+          document.addEventListener("DOMContentLoaded", function () {
+            init();
+          });
+
+
+
+          function addData(chart, label, data) {
+            chart.data.labels.push('');
+            chart.data.datasets.forEach((dataset) => {
+                if (dataset.label == label){
+                    dataset.data.push(data);
+                }
+            });
+            chart.update();
+        }
+
+
+          var ctx = document.getElementById('myChart').getContext('2d');
+          var myChart = new Chart(ctx, {
+              type: 'line',
+              data: {
+                datasets: [
+                  {
+                  label: 'Bitrate',
+                  data: [],
+                  backgroundColor:'rgba(54, 162, 235, 0.2)',
+                  borderColor:'rgba(54, 162, 235, 1)',
+                  fill: true,
+                  yAxisID: "ybit",
+                },
+                {
+                label: 'Buffer level',
+                data: [],
+                backgroundColor:'rgba(255, 159, 64, 0.2)',
+                borderColor:'rgba(255, 159, 64, 1)',
+                fill: true,
+                yAxisID: "ybuff",
+              }
+              ],
+              },
+              options: {
+                responsive: true,
+                scales: {
+                  ybit:  {
+                    title: {
+                        display: true,
+                        text: 'Bitrate (kbps)'
+                    },
+                    type: 'linear',
+                    position: 'left',
+                    display: true,
+                  },
+                  ybuff: {
+                    title: {
+                        display: true,
+                        text: 'Video Buffer (secs)'
+                    },
+                    type: 'linear',
+                    position: 'right',
+                    display: true,
+                  }
+                }
+              },
+            });
+
+          function init(){
+            var video
+            var player
+            var mpd_url = "./output_encr/stream.mpd";
+            video = document.querySelector("video");
+            player = dashjs.MediaPlayer().create();
+            player.initialize(video, mpd_url, true);
+            player.on(dashjs.MediaPlayer.events["PLAYBACK_ENDED"], function() {
+              clearInterval(eventPoller);
+            });
+
+            var eventPoller = setInterval(function() {
+            var streamInfo = player.getActiveStream().getStreamInfo();
+            var dashMetrics = player.getDashMetrics();
+            var dashAdapter = player.getDashAdapter();
+            if (dashMetrics && streamInfo) {
+              const periodIdx = streamInfo.index;
+              var repSwitch = dashMetrics.getCurrentRepresentationSwitch('video', true);
+              var bufferLevel = dashMetrics.getCurrentBufferLevel('video', true);
+              var bitrate = repSwitch ? Math.round(dashAdapter.
+                getBandwidthForRepresentation(repSwitch.to,
+                  periodIdx) / 1000) : NaN;
+
+                  document.getElementById('buffer').innerText = bufferLevel;
+                  document.getElementById('bitrate').innerText = bitrate;
+                  document.getElementById('representation').innerText = repSwitch.to;
+
+
+                  addData(myChart,'Bitrate',bitrate);
+                  addData(myChart,'Buffer level',bufferLevel);
+                  }
+                }, 500);
+              }
+
+
+          </script>
+          <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
+          <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
+          <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
+    </body>
+</html>
